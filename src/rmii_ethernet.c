@@ -48,14 +48,14 @@ static volatile uint8_t rx_ring[RX_BUF_SIZE] __attribute__((aligned (RX_BUF_SIZE
 
 // Pointers to packets in the RX ring
 // Needs to be large enough to hold the expected number of packets
-// received while processing a max sized packet 
+// received while processing a max sized packet
 #define RX_NUM_PTR_POW 5
 #define RX_NUM_PTR (1 << RX_NUM_PTR_POW)
 #define RX_NUM_MASK (RX_NUM_PTR - 1)
 
 typedef struct {
-  uint16_t pkt_addr;  // Ring buffer address of packet
-  uint16_t pkt_len;   // Length of packet in bytes
+    uint16_t pkt_addr;  // Ring buffer address of packet
+    uint16_t pkt_len;   // Length of packet in bytes
 } pkt_ptr_t;
 
 
@@ -124,7 +124,7 @@ static dma_channel_config ipg_dma_channel_config;
 static dma_channel_config tx_dma_channel_config;
 static dma_channel_config tx_chain_channel_config;
 
-// Reload RX DMA engine after this many bytes 
+// Reload RX DMA engine after this many bytes
 static uint32_t rx_packet_size = RX_BUF_SIZE;
 
 // Capture Tx DMA read pointer during IPG
@@ -136,47 +136,49 @@ int phy_address;
 static const uint32_t ethernet_polynomial_le = 0xedb88320U;
 
 #ifndef USE_CPU_CRC
-static uint32_t crc32Lookup[256] =
-{ 0x00000000,0x77073096,0xEE0E612C,0x990951BA,0x076DC419,0x706AF48F,0xE963A535,0x9E6495A3,
-  0x0EDB8832,0x79DCB8A4,0xE0D5E91E,0x97D2D988,0x09B64C2B,0x7EB17CBD,0xE7B82D07,0x90BF1D91,
-  0x1DB71064,0x6AB020F2,0xF3B97148,0x84BE41DE,0x1ADAD47D,0x6DDDE4EB,0xF4D4B551,0x83D385C7,
-  0x136C9856,0x646BA8C0,0xFD62F97A,0x8A65C9EC,0x14015C4F,0x63066CD9,0xFA0F3D63,0x8D080DF5,
-  0x3B6E20C8,0x4C69105E,0xD56041E4,0xA2677172,0x3C03E4D1,0x4B04D447,0xD20D85FD,0xA50AB56B,
-  0x35B5A8FA,0x42B2986C,0xDBBBC9D6,0xACBCF940,0x32D86CE3,0x45DF5C75,0xDCD60DCF,0xABD13D59,
-  0x26D930AC,0x51DE003A,0xC8D75180,0xBFD06116,0x21B4F4B5,0x56B3C423,0xCFBA9599,0xB8BDA50F,
-  0x2802B89E,0x5F058808,0xC60CD9B2,0xB10BE924,0x2F6F7C87,0x58684C11,0xC1611DAB,0xB6662D3D,
-  0x76DC4190,0x01DB7106,0x98D220BC,0xEFD5102A,0x71B18589,0x06B6B51F,0x9FBFE4A5,0xE8B8D433,
-  0x7807C9A2,0x0F00F934,0x9609A88E,0xE10E9818,0x7F6A0DBB,0x086D3D2D,0x91646C97,0xE6635C01,
-  0x6B6B51F4,0x1C6C6162,0x856530D8,0xF262004E,0x6C0695ED,0x1B01A57B,0x8208F4C1,0xF50FC457,
-  0x65B0D9C6,0x12B7E950,0x8BBEB8EA,0xFCB9887C,0x62DD1DDF,0x15DA2D49,0x8CD37CF3,0xFBD44C65,
-  0x4DB26158,0x3AB551CE,0xA3BC0074,0xD4BB30E2,0x4ADFA541,0x3DD895D7,0xA4D1C46D,0xD3D6F4FB,
-  0x4369E96A,0x346ED9FC,0xAD678846,0xDA60B8D0,0x44042D73,0x33031DE5,0xAA0A4C5F,0xDD0D7CC9,
-  0x5005713C,0x270241AA,0xBE0B1010,0xC90C2086,0x5768B525,0x206F85B3,0xB966D409,0xCE61E49F,
-  0x5EDEF90E,0x29D9C998,0xB0D09822,0xC7D7A8B4,0x59B33D17,0x2EB40D81,0xB7BD5C3B,0xC0BA6CAD,
-  0xEDB88320,0x9ABFB3B6,0x03B6E20C,0x74B1D29A,0xEAD54739,0x9DD277AF,0x04DB2615,0x73DC1683,
-  0xE3630B12,0x94643B84,0x0D6D6A3E,0x7A6A5AA8,0xE40ECF0B,0x9309FF9D,0x0A00AE27,0x7D079EB1,
-  0xF00F9344,0x8708A3D2,0x1E01F268,0x6906C2FE,0xF762575D,0x806567CB,0x196C3671,0x6E6B06E7,
-  0xFED41B76,0x89D32BE0,0x10DA7A5A,0x67DD4ACC,0xF9B9DF6F,0x8EBEEFF9,0x17B7BE43,0x60B08ED5,
-  0xD6D6A3E8,0xA1D1937E,0x38D8C2C4,0x4FDFF252,0xD1BB67F1,0xA6BC5767,0x3FB506DD,0x48B2364B,
-  0xD80D2BDA,0xAF0A1B4C,0x36034AF6,0x41047A60,0xDF60EFC3,0xA867DF55,0x316E8EEF,0x4669BE79,
-  0xCB61B38C,0xBC66831A,0x256FD2A0,0x5268E236,0xCC0C7795,0xBB0B4703,0x220216B9,0x5505262F,
-  0xC5BA3BBE,0xB2BD0B28,0x2BB45A92,0x5CB36A04,0xC2D7FFA7,0xB5D0CF31,0x2CD99E8B,0x5BDEAE1D,
-  0x9B64C2B0,0xEC63F226,0x756AA39C,0x026D930A,0x9C0906A9,0xEB0E363F,0x72076785,0x05005713,
-  0x95BF4A82,0xE2B87A14,0x7BB12BAE,0x0CB61B38,0x92D28E9B,0xE5D5BE0D,0x7CDCEFB7,0x0BDBDF21,
-  0x86D3D2D4,0xF1D4E242,0x68DDB3F8,0x1FDA836E,0x81BE16CD,0xF6B9265B,0x6FB077E1,0x18B74777,
-  0x88085AE6,0xFF0F6A70,0x66063BCA,0x11010B5C,0x8F659EFF,0xF862AE69,0x616BFFD3,0x166CCF45,
-  0xA00AE278,0xD70DD2EE,0x4E048354,0x3903B3C2,0xA7672661,0xD06016F7,0x4969474D,0x3E6E77DB,
-  0xAED16A4A,0xD9D65ADC,0x40DF0B66,0x37D83BF0,0xA9BCAE53,0xDEBB9EC5,0x47B2CF7F,0x30B5FFE9,
-  0xBDBDF21C,0xCABAC28A,0x53B39330,0x24B4A3A6,0xBAD03605,0xCDD70693,0x54DE5729,0x23D967BF,
-  0xB3667A2E,0xC4614AB8,0x5D681B02,0x2A6F2B94,0xB40BBE37,0xC30C8EA1,0x5A05DF1B,0x2D02EF8D
+static uint32_t crc32Lookup[256] = {
+    0x00000000,0x77073096,0xEE0E612C,0x990951BA,0x076DC419,0x706AF48F,0xE963A535,0x9E6495A3,
+    0x0EDB8832,0x79DCB8A4,0xE0D5E91E,0x97D2D988,0x09B64C2B,0x7EB17CBD,0xE7B82D07,0x90BF1D91,
+    0x1DB71064,0x6AB020F2,0xF3B97148,0x84BE41DE,0x1ADAD47D,0x6DDDE4EB,0xF4D4B551,0x83D385C7,
+    0x136C9856,0x646BA8C0,0xFD62F97A,0x8A65C9EC,0x14015C4F,0x63066CD9,0xFA0F3D63,0x8D080DF5,
+    0x3B6E20C8,0x4C69105E,0xD56041E4,0xA2677172,0x3C03E4D1,0x4B04D447,0xD20D85FD,0xA50AB56B,
+    0x35B5A8FA,0x42B2986C,0xDBBBC9D6,0xACBCF940,0x32D86CE3,0x45DF5C75,0xDCD60DCF,0xABD13D59,
+    0x26D930AC,0x51DE003A,0xC8D75180,0xBFD06116,0x21B4F4B5,0x56B3C423,0xCFBA9599,0xB8BDA50F,
+    0x2802B89E,0x5F058808,0xC60CD9B2,0xB10BE924,0x2F6F7C87,0x58684C11,0xC1611DAB,0xB6662D3D,
+    0x76DC4190,0x01DB7106,0x98D220BC,0xEFD5102A,0x71B18589,0x06B6B51F,0x9FBFE4A5,0xE8B8D433,
+    0x7807C9A2,0x0F00F934,0x9609A88E,0xE10E9818,0x7F6A0DBB,0x086D3D2D,0x91646C97,0xE6635C01,
+    0x6B6B51F4,0x1C6C6162,0x856530D8,0xF262004E,0x6C0695ED,0x1B01A57B,0x8208F4C1,0xF50FC457,
+    0x65B0D9C6,0x12B7E950,0x8BBEB8EA,0xFCB9887C,0x62DD1DDF,0x15DA2D49,0x8CD37CF3,0xFBD44C65,
+    0x4DB26158,0x3AB551CE,0xA3BC0074,0xD4BB30E2,0x4ADFA541,0x3DD895D7,0xA4D1C46D,0xD3D6F4FB,
+    0x4369E96A,0x346ED9FC,0xAD678846,0xDA60B8D0,0x44042D73,0x33031DE5,0xAA0A4C5F,0xDD0D7CC9,
+    0x5005713C,0x270241AA,0xBE0B1010,0xC90C2086,0x5768B525,0x206F85B3,0xB966D409,0xCE61E49F,
+    0x5EDEF90E,0x29D9C998,0xB0D09822,0xC7D7A8B4,0x59B33D17,0x2EB40D81,0xB7BD5C3B,0xC0BA6CAD,
+    0xEDB88320,0x9ABFB3B6,0x03B6E20C,0x74B1D29A,0xEAD54739,0x9DD277AF,0x04DB2615,0x73DC1683,
+    0xE3630B12,0x94643B84,0x0D6D6A3E,0x7A6A5AA8,0xE40ECF0B,0x9309FF9D,0x0A00AE27,0x7D079EB1,
+    0xF00F9344,0x8708A3D2,0x1E01F268,0x6906C2FE,0xF762575D,0x806567CB,0x196C3671,0x6E6B06E7,
+    0xFED41B76,0x89D32BE0,0x10DA7A5A,0x67DD4ACC,0xF9B9DF6F,0x8EBEEFF9,0x17B7BE43,0x60B08ED5,
+    0xD6D6A3E8,0xA1D1937E,0x38D8C2C4,0x4FDFF252,0xD1BB67F1,0xA6BC5767,0x3FB506DD,0x48B2364B,
+    0xD80D2BDA,0xAF0A1B4C,0x36034AF6,0x41047A60,0xDF60EFC3,0xA867DF55,0x316E8EEF,0x4669BE79,
+    0xCB61B38C,0xBC66831A,0x256FD2A0,0x5268E236,0xCC0C7795,0xBB0B4703,0x220216B9,0x5505262F,
+    0xC5BA3BBE,0xB2BD0B28,0x2BB45A92,0x5CB36A04,0xC2D7FFA7,0xB5D0CF31,0x2CD99E8B,0x5BDEAE1D,
+    0x9B64C2B0,0xEC63F226,0x756AA39C,0x026D930A,0x9C0906A9,0xEB0E363F,0x72076785,0x05005713,
+    0x95BF4A82,0xE2B87A14,0x7BB12BAE,0x0CB61B38,0x92D28E9B,0xE5D5BE0D,0x7CDCEFB7,0x0BDBDF21,
+    0x86D3D2D4,0xF1D4E242,0x68DDB3F8,0x1FDA836E,0x81BE16CD,0xF6B9265B,0x6FB077E1,0x18B74777,
+    0x88085AE6,0xFF0F6A70,0x66063BCA,0x11010B5C,0x8F659EFF,0xF862AE69,0x616BFFD3,0x166CCF45,
+    0xA00AE278,0xD70DD2EE,0x4E048354,0x3903B3C2,0xA7672661,0xD06016F7,0x4969474D,0x3E6E77DB,
+    0xAED16A4A,0xD9D65ADC,0x40DF0B66,0x37D83BF0,0xA9BCAE53,0xDEBB9EC5,0x47B2CF7F,0x30B5FFE9,
+    0xBDBDF21C,0xCABAC28A,0x53B39330,0x24B4A3A6,0xBAD03605,0xCDD70693,0x54DE5729,0x23D967BF,
+    0xB3667A2E,0xC4614AB8,0x5D681B02,0x2A6F2B94,0xB40BBE37,0xC30C8EA1,0x5A05DF1B,0x2D02EF8D
 };
 #endif
 
 // Fetch data from ring buffer, calculate CRC, write data to destination pbuf
 // Return length (valid) or zero (invalid CRC)
-static uint __not_in_flash_func(ethernet_frame_length_pbuf)(volatile uint8_t *data, 
-				       struct pbuf *buf,
-				       int len, int addr) {
+static uint __not_in_flash_func(ethernet_frame_length_pbuf)(
+    volatile uint8_t *data,
+    struct pbuf *buf,
+    int len, int addr
+) {
 
     uint crc = 0xffffffff;  /* Initial value. */
     uint index = 0;
@@ -196,52 +198,52 @@ static uint __not_in_flash_func(ethernet_frame_length_pbuf)(volatile uint8_t *da
 
     // This is from LWIP pbuf.c, pbuf_take(...)
     for (p = buf; total_copy_len != 0; p = p->next) {
-      wr_ptr = (uint8_t *)p->payload;
-      orig_ptr = (uint8_t *)p->payload;
+        wr_ptr = (uint8_t *)p->payload;
+        orig_ptr = (uint8_t *)p->payload;
 
-      buf_copy_len = total_copy_len;
-      if (buf_copy_len > p->len) {
-	/* this pbuf cannot hold all remaining data */
-	buf_copy_len = p->len;
-      }
+        buf_copy_len = total_copy_len;
+        if (buf_copy_len > p->len) {
+            /* this pbuf cannot hold all remaining data */
+            buf_copy_len = p->len;
+        }
 
-      // Calculate CRC over payload
-      for (i = 0; i < buf_copy_len; i++) {
-	// Get data from ring buffer
-	curr_data = data[addr];
+        // Calculate CRC over payload
+        for (i = 0; i < buf_copy_len; i++) {
+            // Get data from ring buffer
+            curr_data = data[addr];
 
-	// Wrap address around ring buffer
-	addr = (addr + 1) & RX_BUF_MASK;
+            // Wrap address around ring buffer
+            addr = (addr + 1) & RX_BUF_MASK;
 
-	// Save data
-	*wr_ptr++ = curr_data;
+            // Save data
+            *wr_ptr++ = curr_data;
 
-	if (total_copy_len > 4) {
-	  // Calculate CRC
-#ifdef USE_CPU_CRC
-	  crc ^= curr_data;
-	  for (j = 0; j < 8; j++) {
-	    lsb = crc & 1;
-	    crc >>= 1;
-	    if (lsb) crc ^= ethernet_polynomial_le;
-	  }
-#else
-	  offset = (crc & 0xff) ^ curr_data;
-	  crc = (crc >> 8) ^ crc32Lookup[offset];
-#endif
-	} else {
-	  // Save CRC
-	  pkt_crc |= curr_data << ((4 - total_copy_len) * 8);
-	}
-	total_copy_len--;
-      }
+            if (total_copy_len > 4) {
+                // Calculate CRC
+                #ifdef USE_CPU_CRC
+                crc ^= curr_data;
+                for (j = 0; j < 8; j++) {
+                    lsb = crc & 1;
+                    crc >>= 1;
+                    if (lsb) crc ^= ethernet_polynomial_le;
+                }
+                #else
+                offset = (crc & 0xff) ^ curr_data;
+                crc = (crc >> 8) ^ crc32Lookup[offset];
+                #endif
+            } else {
+                // Save CRC
+                pkt_crc |= curr_data << ((4 - total_copy_len) * 8);
+            }
+            total_copy_len--;
+        }
     }
 
     inverted_crc = ~crc;
 
     // Bad packet, return 0 for error
     if (pkt_crc != inverted_crc) {
-      len = 0;
+        len = 0;
     }
 
     return len;
@@ -249,9 +251,11 @@ static uint __not_in_flash_func(ethernet_frame_length_pbuf)(volatile uint8_t *da
 
 // Copy packet data to ring buffer, adding pkt len, and CRC, for transmission
 // Returns final length, including pkt len and CRC
-static uint __not_in_flash_func(ethernet_frame_copy_ring_pbuf)(volatile uint8_t *data, 
-					  struct pbuf *p,
-					  int addr) {
+static uint __not_in_flash_func(ethernet_frame_copy_ring_pbuf)(
+    volatile uint8_t *data,
+    struct pbuf *p,
+    int addr
+) {
 
     uint crc = 0xffffffff;  /* Initial value. */
     uint inverted_crc;
@@ -259,89 +263,89 @@ static uint __not_in_flash_func(ethernet_frame_copy_ring_pbuf)(volatile uint8_t 
     uint32_t tot_len = 0;
     int j;
 
-#ifdef USE_CPU_CRC
+    #ifdef USE_CPU_CRC
     int i;
     uint32_t lsb;
 
     // Get the payload from lwip, generating CRC along the way
     for (struct pbuf *q = p; q != NULL; q = q->next) {
-      for (j = 0; j < q->len; j++) {
-	buf_dat = *(uint8_t *)(q->payload++);
-	data[addr] = buf_dat;
-	tot_len++;
+        for (j = 0; j < q->len; j++) {
+            buf_dat = *(uint8_t *)(q->payload++);
+            data[addr] = buf_dat;
+            tot_len++;
 
-	// Wrap address around ring buffer
-	addr = (addr + 1) & TX_BUF_MASK;
+            // Wrap address around ring buffer
+            addr = (addr + 1) & TX_BUF_MASK;
 
-	// Accumulate CRC
-	crc ^= buf_dat;
-	for (i = 0; i < 8; i++) {
-	  lsb = crc & 1;
-	  crc >>= 1;
-	  if (lsb) crc ^= ethernet_polynomial_le;
-	}
-      }
+            // Accumulate CRC
+            crc ^= buf_dat;
+            for (i = 0; i < 8; i++) {
+                lsb = crc & 1;
+                crc >>= 1;
+                if (lsb) crc ^= ethernet_polynomial_le;
+            }
+        }
     }
-    
+
     // Make sure we have enough bytes to meet minimum packet size, minus CRC
     while (tot_len < 60) {
-      buf_dat = 0; // padding byte
-      data[addr] = buf_dat;
-      tot_len++;
+        buf_dat = 0; // padding byte
+        data[addr] = buf_dat;
+        tot_len++;
 
-      // Wrap address around ring buffer
-      addr = (addr + 1) & TX_BUF_MASK;
+        // Wrap address around ring buffer
+        addr = (addr + 1) & TX_BUF_MASK;
 
-      // Accumulate CRC
-      crc ^= buf_dat;
-      for (i = 0; i < 8; i++) {
-	lsb = crc & 1;
-	crc >>= 1;
-	if (lsb) crc ^= ethernet_polynomial_le;
-      }
+        // Accumulate CRC
+        crc ^= buf_dat;
+        for (i = 0; i < 8; i++) {
+            lsb = crc & 1;
+            crc >>= 1;
+            if (lsb) crc ^= ethernet_polynomial_le;
+        }
     }
 
-#else
+    #else
     uint8_t offset;
 
     // Get the payload from lwip, generating CRC along the way
     for (struct pbuf *q = p; q != NULL; q = q->next) {
-      for (j = 0; j < q->len; j++) {
-	buf_dat = *(uint8_t *)(q->payload++);
-	data[addr] = buf_dat;
-	tot_len++;
+        for (j = 0; j < q->len; j++) {
+            buf_dat = *(uint8_t *)(q->payload++);
+            data[addr] = buf_dat;
+            tot_len++;
 
-	// Wrap address around ring buffer
-	addr = (addr + 1) & TX_BUF_MASK;
+            // Wrap address around ring buffer
+            addr = (addr + 1) & TX_BUF_MASK;
 
-	// Accumulate CRC
-	offset = (crc & 0xff) ^ buf_dat;
-	crc = (crc >> 8) ^ crc32Lookup[offset];
-      }
+            // Accumulate CRC
+            offset = (crc & 0xff) ^ buf_dat;
+            crc = (crc >> 8) ^ crc32Lookup[offset];
+        }
     }
 
     // Make sure we have enough bytes to meet minimum packet size, minus CRC
     while (tot_len < 60) {
-      buf_dat = 0; // padding byte
-      data[addr] = buf_dat;
-      tot_len++;
+        buf_dat = 0; // padding byte
+        data[addr] = buf_dat;
+        tot_len++;
 
-      // Wrap address around ring buffer
-      addr = (addr + 1) & TX_BUF_MASK;
+        // Wrap address around ring buffer
+        addr = (addr + 1) & TX_BUF_MASK;
 
-      // Accumulate CRC
-      offset = (crc & 0xff) ^ buf_dat;
-      crc = (crc >> 8) ^ crc32Lookup[offset];
+        // Accumulate CRC
+        offset = (crc & 0xff) ^ buf_dat;
+        crc = (crc >> 8) ^ crc32Lookup[offset];
     }
-#endif
-      
+    #endif
+
     // Insert CRC into packet
     inverted_crc = ~crc;
 
     for (int i = 0; i < 4; i++) {
-      data[addr] = inverted_crc >> (i * 8);
-      // Wrap address around ring buffer
-      addr = (addr + 1) & TX_BUF_MASK;
+        data[addr] = inverted_crc >> (i * 8);
+        // Wrap address around ring buffer
+        addr = (addr + 1) & TX_BUF_MASK;
     }
 
     // Add CRC len
@@ -353,13 +357,13 @@ static uint __not_in_flash_func(ethernet_frame_copy_ring_pbuf)(volatile uint8_t 
 
 // MDIO state machine definitions
 enum md_states {
-  MD_IDLE, MD_START, MD_PREAMB, MD_SOF, MD_OPCODE,
-  MD_PHY_ADDR, MD_REG_ADDR, MD_TURN, MD_DATA
+    MD_IDLE, MD_START, MD_PREAMB, MD_SOF, MD_OPCODE,
+    MD_PHY_ADDR, MD_REG_ADDR, MD_TURN, MD_DATA
 };
 
 // Read or write flag. Read or write during MD_DATA state, else write
 enum md_pin_states {
-  MD_READ, MD_WRITE
+    MD_READ, MD_WRITE
 };
 
 // Read/write MDIO on MDC falling edge
@@ -383,17 +387,17 @@ static void md_sm(void);
 
 #ifdef MD_STATE_DEBUG
 static void state_alpha(enum md_pin_states state) {
-  switch (state) {
-  case MD_IDLE:     printf("MD_IDLE    "); break;
-  case MD_START:    printf("MD_START   "); break;
-  case MD_PREAMB:   printf("MD_PREAMB  "); break; 
-  case MD_SOF:      printf("MD_SOF     "); break;
-  case MD_OPCODE:   printf("MD_OPCODE  "); break;
-  case MD_PHY_ADDR: printf("MD_PHY_ADDR"); break;
-  case MD_REG_ADDR: printf("MD_REG_ADDR"); break;
-  case MD_TURN:     printf("MD_TURN    "); break;
-  case MD_DATA:     printf("MD_DATA    "); break;
-  };
+    switch (state) {
+        case MD_IDLE:     printf("MD_IDLE    "); break;
+        case MD_START:    printf("MD_START   "); break;
+        case MD_PREAMB:   printf("MD_PREAMB  "); break;
+        case MD_SOF:      printf("MD_SOF     "); break;
+        case MD_OPCODE:   printf("MD_OPCODE  "); break;
+        case MD_PHY_ADDR: printf("MD_PHY_ADDR"); break;
+        case MD_REG_ADDR: printf("MD_REG_ADDR"); break;
+        case MD_TURN:     printf("MD_TURN    "); break;
+        case MD_DATA:     printf("MD_DATA    "); break;
+    };
 }
 #endif
 
@@ -402,205 +406,211 @@ static void state_alpha(enum md_pin_states state) {
 // Note: MSB data is sent first
 
 static void __not_in_flash_func(netif_rmii_ethernet_mdc_falling)() {
-  uint32_t bit;
+    uint32_t bit;
 
 #ifdef MD_STATE_DEBUG
-  state_alpha(md_state);
-  printf(" Istate/clk/entry/exit pin/rd: %d %d %d ", md_state, md_clocks,
-	 gpio_get(PICO_RMII_ETHERNET_MDIO_PIN));
+    state_alpha(md_state);
+    printf(" Istate/clk/entry/exit pin/rd: %d %d %d ", md_state, md_clocks,
+        gpio_get(PICO_RMII_ETHERNET_MDIO_PIN));
 #endif
 
-  // Set pin direction for all states before read/writing data
-  if (md_pin_state == MD_READ) {
-    gpio_set_dir(PICO_RMII_ETHERNET_MDIO_PIN, GPIO_IN);
-  } else {
-    gpio_set_dir(PICO_RMII_ETHERNET_MDIO_PIN, GPIO_OUT);
-  }
-
-  // Accumulate data during data read state
-  if ((md_state == MD_DATA) && (md_pin_state == MD_READ)) {
-    // Get bit, put into read data
-    bit = gpio_get(PICO_RMII_ETHERNET_MDIO_PIN);
-    md_rd_data = (md_rd_data << 1) | bit;
-  } else {
-    // Otherwise, get MSB from write data, send to chip
-    bit = (md_data & (1 << (md_clocks - 1))) ? 1 : 0;
-    gpio_put(PICO_RMII_ETHERNET_MDIO_PIN, bit);
-  }
-
-  // Bump clocks for this state
-  md_clocks--;
-
-  // If done with this set of clocks, do state transistion
-  if (md_clocks == 0) {
-    // Actions to be done at last clock of a given MD_STATE
-    if (md_state == MD_DATA) {
-      if (md_pin_state == MD_READ) {
-	// Save read register address
-	md_last_addr = md_reg_addr;
-	// Save data
-	md_rd_return = md_rd_data;
-      } else {
-      // If we did a write to the saved address, invalidate it
-	if (md_reg_addr == md_last_addr) {
-	  md_reg_addr = -1;
-	}
-      }
-      // Signal SM done
-      md_sm_busy = 0;
-#ifdef MD_STATE_DEBUG
-      printf("md_rd_return: rd/wr data: %d %04x\n", md_rd_wr, md_rd_return);
-#endif
+    // Set pin direction for all states before read/writing data
+    if (md_pin_state == MD_READ) {
+        gpio_set_dir(PICO_RMII_ETHERNET_MDIO_PIN, GPIO_IN);
+    } else {
+        gpio_set_dir(PICO_RMII_ETHERNET_MDIO_PIN, GPIO_OUT);
     }
 
-    if (md_state == MD_IDLE) {
-      // No more edges
-      gpio_set_irq_enabled_with_callback(PICO_RMII_ETHERNET_MDC_PIN, 
-					 GPIO_IRQ_EDGE_FALL, false, 
-					 netif_rmii_ethernet_mdc_falling);
-    } 
+    // Accumulate data during data read state
+    if ((md_state == MD_DATA) && (md_pin_state == MD_READ)) {
+        // Get bit, put into read data
+        bit = gpio_get(PICO_RMII_ETHERNET_MDIO_PIN);
+        md_rd_data = (md_rd_data << 1) | bit;
+    } else {
+        // Otherwise, get MSB from write data, send to chip
+        bit = (md_data & (1 << (md_clocks - 1))) ? 1 : 0;
+        gpio_put(PICO_RMII_ETHERNET_MDIO_PIN, bit);
+    }
 
-    // Get next state
-    md_sm();
-  }
+    // Bump clocks for this state
+    md_clocks--;
+
+    // If done with this set of clocks, do state transistion
+    if (md_clocks == 0) {
+        // Actions to be done at last clock of a given MD_STATE
+        if (md_state == MD_DATA) {
+            if (md_pin_state == MD_READ) {
+                // Save read register address
+                md_last_addr = md_reg_addr;
+                // Save data
+                md_rd_return = md_rd_data;
+            } else {
+                // If we did a write to the saved address, invalidate it
+                if (md_reg_addr == md_last_addr) {
+                    md_reg_addr = -1;
+                }
+            }
+            // Signal SM done
+            md_sm_busy = 0;
+#ifdef MD_STATE_DEBUG
+            printf("md_rd_return: rd/wr data: %d %04x\n", md_rd_wr, md_rd_return);
+#endif
+        }
+
+        if (md_state == MD_IDLE) {
+            // No more edges
+            gpio_set_irq_enabled_with_callback(
+                PICO_RMII_ETHERNET_MDC_PIN,
+                GPIO_IRQ_EDGE_FALL, false,
+                netif_rmii_ethernet_mdc_falling
+            );
+        }
+
+        // Get next state
+        md_sm();
+    }
 }
 
 // Walk through MD states after each set of falling edge events
 static void __not_in_flash_func(md_sm)() {
 
-  switch(md_state) {
+    switch(md_state) {
     // If idle, stay there
-  case MD_IDLE:
-    md_state = MD_IDLE;
-    md_data = 1;
-    md_clocks = 1;
-    md_pin_state = MD_WRITE;
-    break;
+    case MD_IDLE:
+        md_state = MD_IDLE;
+        md_data = 1;
+        md_clocks = 1;
+        md_pin_state = MD_WRITE;
+        break;
 
     // Start up SM, first do preamble
     // Enable falling edge ISR
-  case MD_START:
-    md_state = MD_PREAMB;
-    md_data = 0xffffffff;
-    md_clocks = 32;
-    md_pin_state = MD_WRITE;
-    gpio_set_irq_enabled_with_callback(PICO_RMII_ETHERNET_MDC_PIN, 
-				       GPIO_IRQ_EDGE_FALL, true, 
-				       netif_rmii_ethernet_mdc_falling);
-    break;
+    case MD_START:
+        md_state = MD_PREAMB;
+        md_data = 0xffffffff;
+        md_clocks = 32;
+        md_pin_state = MD_WRITE;
+        gpio_set_irq_enabled_with_callback(
+            PICO_RMII_ETHERNET_MDC_PIN,
+            GPIO_IRQ_EDGE_FALL,
+            true,
+            netif_rmii_ethernet_mdc_falling
+        );
+        break;
 
     // Done with preamble, start SOF
-  case MD_PREAMB:
-    md_state = MD_SOF;
-    md_data = 0b01;
-    md_clocks = 2;
-    md_pin_state = MD_WRITE;
-    break;
+    case MD_PREAMB:
+        md_state = MD_SOF;
+        md_data = 0b01;
+        md_clocks = 2;
+        md_pin_state = MD_WRITE;
+        break;
 
     // Done with SOF, start opcode
-  case MD_SOF:
-    md_state = MD_OPCODE;
-    md_data = (md_rd_wr == MD_READ) ? 0b10: 0b01;
-    md_clocks = 2;
-    md_pin_state = MD_WRITE;
-    break;
+    case MD_SOF:
+        md_state = MD_OPCODE;
+        md_data = (md_rd_wr == MD_READ) ? 0b10: 0b01;
+        md_clocks = 2;
+        md_pin_state = MD_WRITE;
+        break;
 
     // Done with OPCODE, start phy address
-  case MD_OPCODE:
-    md_state = MD_PHY_ADDR;
-    md_data = md_phy_addr;
-    md_clocks = 5;
-    md_pin_state = MD_WRITE;
-    break;
+    case MD_OPCODE:
+        md_state = MD_PHY_ADDR;
+        md_data = md_phy_addr;
+        md_clocks = 5;
+        md_pin_state = MD_WRITE;
+        break;
 
     // Done with phy address, start reg address
-  case MD_PHY_ADDR:
-    md_state = MD_REG_ADDR;
-    md_data = md_reg_addr;
-    md_clocks = 5;
-    md_pin_state = MD_WRITE;
-    break;
+    case MD_PHY_ADDR:
+        md_state = MD_REG_ADDR;
+        md_data = md_reg_addr;
+        md_clocks = 5;
+        md_pin_state = MD_WRITE;
+        break;
 
     // Done with reg address, start turn around
-  case MD_REG_ADDR:
-    md_state = MD_TURN;
-    md_data = 0b00;
-    md_clocks = 2;
-    md_pin_state = md_rd_wr;
-    break;
+    case MD_REG_ADDR:
+        md_state = MD_TURN;
+        md_data = 0b00;
+        md_clocks = 2;
+        md_pin_state = md_rd_wr;
+        break;
 
-  case MD_TURN:
-    md_state = MD_DATA;
-    md_data = md_wr_data;
-    md_clocks = 16;
-    md_pin_state = md_rd_wr;
-    break;
+    case MD_TURN:
+        md_state = MD_DATA;
+        md_data = md_wr_data;
+        md_clocks = 16;
+        md_pin_state = md_rd_wr;
+        break;
 
-  case MD_DATA:
-    md_state = MD_IDLE;
-    md_data = 0;
-    md_clocks = 1;
-    md_pin_state = MD_WRITE;
+    case MD_DATA:
+        md_state = MD_IDLE;
+        md_data = 0;
+        md_clocks = 1;
+        md_pin_state = MD_WRITE;
 
-    break;
-  }
+        break;
+    }
 
 }
 
 // Start MDIO state machine if idle, otherwise wait
-int __not_in_flash_func(md_sm_start)(uint addr, uint reg, uint val, 
-		enum md_pin_states rd_wr, uint blk) {
+int __not_in_flash_func(md_sm_start)(
+    uint addr, uint reg, uint val, enum md_pin_states rd_wr, uint blk
+) {
 
-  // If busy and non-blocking, return with not started flag
-  if ((md_sm_busy == 1) && (blk == 0)) return -1;
-  
-  // else wait until not busy
-  while (md_sm_busy == 1) {
-    tight_loop_contents();
-  }
+    // If busy and non-blocking, return with not started flag
+    if ((md_sm_busy == 1) && (blk == 0)) return -1;
 
-  // Start sm
-  // Set busy to lock SM
-  md_sm_busy = 1;
-
-  // Set up parameters for ISR
-  md_phy_addr = addr;
-  md_reg_addr = reg;
-  md_wr_data = val;
-  md_rd_wr = rd_wr;
-  md_state = MD_START;
-  md_last_addr = -1;
-
-  // Kick off state machine
-  md_sm();
-
-  // If blocking , wait until not busy
-  if (blk) {
+    // else wait until not busy
     while (md_sm_busy == 1) {
-      tight_loop_contents();
+        tight_loop_contents();
     }
-  }    
 
-  // Signal SM successfully started
-  return 0; 
-}  
-  
+    // Start sm
+    // Set busy to lock SM
+    md_sm_busy = 1;
+
+    // Set up parameters for ISR
+    md_phy_addr = addr;
+    md_reg_addr = reg;
+    md_wr_data = val;
+    md_rd_wr = rd_wr;
+    md_state = MD_START;
+    md_last_addr = -1;
+
+    // Kick off state machine
+    md_sm();
+
+    // If blocking , wait until not busy
+    if (blk) {
+        while (md_sm_busy == 1) {
+            tight_loop_contents();
+        }
+    }
+
+    // Signal SM successfully started
+    return 0;
+}
+
 
 // Non-blocking MDIO read, return either previous value read or -1
 uint32_t __not_in_flash_func(netif_rmii_ethernet_mdio_read_nb)(uint addr, uint reg)
 {
-  uint32_t ret_val;
-  // See if we've read this location previously
-  if (reg == md_last_addr) {
-    ret_val = md_rd_return;
-  } else {
-    ret_val = -1;
-  }
+    uint32_t ret_val;
+    // See if we've read this location previously
+    if (reg == md_last_addr) {
+        ret_val = md_rd_return;
+    } else {
+        ret_val = -1;
+    }
 
-  // Start mdio to update read data for next time
-  md_sm_start(addr, reg, 0, MD_READ, 0);
+    // Start mdio to update read data for next time
+    md_sm_start(addr, reg, 0, MD_READ, 0);
 
-  return ret_val;
+    return ret_val;
 }
 
 
@@ -627,7 +637,7 @@ void __not_in_flash_func(netif_rmii_ethernet_mdio_write_nb)(uint addr, uint reg,
 // Blocking MDIO write
 void __not_in_flash_func(netif_rmii_ethernet_mdio_write)(uint addr, uint reg, uint val)
 {
-  
+
   // Start mdio, wait until write completes
   md_sm_start(addr, reg, val, MD_WRITE, 1);
 
@@ -647,25 +657,27 @@ static err_t __not_in_flash_func(netif_rmii_ethernet_output)(struct netif *netif
     // If tx current transmit and last transmit addresses are equal, we're idle
     // (at least at this moment in time!) so we have at least one pkt space avail
     if (ipg_tx_rd_addr != curr_rd_addr) {
-     
-      // Pbuf length does not include CRC bytes
-      uint32_t plen = p->tot_len + 4;
 
-      // Nor does it pad to minimum Ethernet frame size
-      if (plen < 64) plen = 64;
+        // Pbuf length does not include CRC bytes
+        uint32_t plen = p->tot_len + 4;
 
-      // Make Tx read addr into ring buffer index
-      uint32_t curr_rd = curr_rd_addr & TX_BUF_MASK;
-      
-      // Calculate free space available
-      uint32_t tx_buf_wrap = (curr_rd ^ curr_wr) & (1 << (TX_BUF_SIZE_POW-1));
-      uint32_t tx_free = (TX_BUF_SIZE -
-			  (tx_buf_wrap ? ((curr_rd - curr_wr) & TX_BUF_MASK) :
-			   (curr_wr - curr_rd)));
+        // Nor does it pad to minimum Ethernet frame size
+        if (plen < 64) plen = 64;
 
-      // Wait if we don't have enough free space
-      if (plen > tx_free) {
-      }
+        // Make Tx read addr into ring buffer index
+        uint32_t curr_rd = curr_rd_addr & TX_BUF_MASK;
+
+        // Calculate free space available
+        uint32_t tx_buf_wrap = (curr_rd ^ curr_wr) & (1 << (TX_BUF_SIZE_POW-1));
+        uint32_t tx_free = (
+            TX_BUF_SIZE -
+            (tx_buf_wrap ? ((curr_rd - curr_wr) & TX_BUF_MASK) :
+            (curr_wr - curr_rd))
+        );
+
+        // Wait if we don't have enough free space
+        if (plen > tx_free) {
+        }
     }
 
     // Push frame into ring buffer
@@ -685,70 +697,71 @@ static err_t __not_in_flash_func(netif_rmii_ethernet_output)(struct netif *netif
     //   Write into command ring, update write pointer
 
 
-    if (!dma_channel_is_busy(tx_dma_chan) &&
-	!dma_channel_is_busy(ipg_dma_chan)) {
-      // Update tx current packet pointer from command pointer
-      // Command pointer will be advanced to EOC NULL when at end of cmds
-      // one beyond last tx_curr_ptk_ptr
+    if (
+        !dma_channel_is_busy(tx_dma_chan) && !dma_channel_is_busy(ipg_dma_chan)
+    ) {
+        // Update tx current packet pointer from command pointer
+        // Command pointer will be advanced to EOC NULL when at end of cmds
+        // one beyond last tx_curr_ptk_ptr
 
-      // Update only if we're really idle: not transmitting, nor in IPG
-      curr_cmd = (dma_channel_hw_addr(tx_chain_chan)->read_addr);
-      tx_curr_pkt_ptr = (curr_cmd >> 2) & TX_NUM_MASK;
+        // Update only if we're really idle: not transmitting, nor in IPG
+        curr_cmd = (dma_channel_hw_addr(tx_chain_chan)->read_addr);
+        tx_curr_pkt_ptr = (curr_cmd >> 2) & TX_NUM_MASK;
 
-      // Generate next packet pointer
-      uint32_t tx_next_pkt_ptr = (tx_curr_pkt_ptr + 1) & TX_NUM_MASK;
+        // Generate next packet pointer
+        uint32_t tx_next_pkt_ptr = (tx_curr_pkt_ptr + 1) & TX_NUM_MASK;
 
-      // Put end of commands (EOC) into command ring, after new command
-      tx_pkt_ptr[tx_next_pkt_ptr] = 0;
+        // Put end of commands (EOC) into command ring, after new command
+        tx_pkt_ptr[tx_next_pkt_ptr] = 0;
 
-      // Write new command into cmd ring buffer
-      tx_pkt_ptr[tx_curr_pkt_ptr] = len;
+        // Write new command into cmd ring buffer
+        tx_pkt_ptr[tx_curr_pkt_ptr] = len;
 
-      // Save command address for DMA
-      uint32_t tx_pkt_addr = (uint32_t)&(tx_pkt_ptr[tx_curr_pkt_ptr]);
+        // Save command address for DMA
+        uint32_t tx_pkt_addr = (uint32_t)&(tx_pkt_ptr[tx_curr_pkt_ptr]);
 
-      // Bump command ring buffer address
-      tx_curr_pkt_ptr = tx_next_pkt_ptr;
+        // Bump command ring buffer address
+        tx_curr_pkt_ptr = tx_next_pkt_ptr;
 
-      // Trigger command DMA
-      dma_channel_hw_addr(tx_chain_chan)->al1_transfer_count_trig = 1;
-      
+        // Trigger command DMA
+        dma_channel_hw_addr(tx_chain_chan)->al1_transfer_count_trig = 1;
+
     } else {
-      // DMA active
-      // Generate next packet pointer
-      uint32_t tx_next_pkt_ptr = (tx_curr_pkt_ptr + 1) & TX_NUM_MASK;
+        // DMA active
+        // Generate next packet pointer
+        uint32_t tx_next_pkt_ptr = (tx_curr_pkt_ptr + 1) & TX_NUM_MASK;
 
-      curr_cmd = (dma_channel_hw_addr(tx_chain_chan)->read_addr);
-      curr_cmd = (curr_cmd >> 2) & TX_NUM_MASK;
+        curr_cmd = (dma_channel_hw_addr(tx_chain_chan)->read_addr);
+        curr_cmd = (curr_cmd >> 2) & TX_NUM_MASK;
 
-      // Put end of commands (EOC) into command ring, after new command
-      // Do this now, in case data channel DMA triggers while we're 
-      // writing new cmd below
-      tx_pkt_ptr[tx_next_pkt_ptr] = 0;
+        // Put end of commands (EOC) into command ring, after new command
+        // Do this now, in case data channel DMA triggers while we're
+        // writing new cmd below
+        tx_pkt_ptr[tx_next_pkt_ptr] = 0;
 
-      // Write new command into cmd ring buffer
-      tx_pkt_ptr[tx_curr_pkt_ptr] = len;
-      
-      // Make sure DMA is still active, so that we know
-      // the command will be picked up
-      if (!dma_channel_is_busy(tx_dma_chan)) {
-	// Uh oh, data isn't transmitting
-	if (!dma_channel_is_busy(ipg_dma_chan)) {
-	  // And neither is IPG!
-	  // Did command already execute?
-	  // Get current read pointer, compare to write
-	  curr_cmd = (dma_channel_hw_addr(tx_chain_chan)->read_addr);
-	  curr_cmd = (curr_cmd >> 2) & TX_NUM_MASK;
-	  if (curr_cmd == tx_next_pkt_ptr) {
-	    // Nope, trigger it
-	    dma_channel_hw_addr(tx_chain_chan)->al3_read_addr_trig =
-	      (uint32_t)&(tx_pkt_ptr[tx_curr_pkt_ptr]);
-	  }
-	}
-      }
-      // Bump command ring buffer address
-      tx_curr_pkt_ptr = tx_next_pkt_ptr;
-    } 
+        // Write new command into cmd ring buffer
+        tx_pkt_ptr[tx_curr_pkt_ptr] = len;
+
+        // Make sure DMA is still active, so that we know
+        // the command will be picked up
+        if (!dma_channel_is_busy(tx_dma_chan)) {
+            // Uh oh, data isn't transmitting
+            if (!dma_channel_is_busy(ipg_dma_chan)) {
+                // And neither is IPG!
+                // Did command already execute?
+                // Get current read pointer, compare to write
+                curr_cmd = (dma_channel_hw_addr(tx_chain_chan)->read_addr);
+                curr_cmd = (curr_cmd >> 2) & TX_NUM_MASK;
+                if (curr_cmd == tx_next_pkt_ptr) {
+                    // Nope, trigger it
+                    dma_channel_hw_addr(tx_chain_chan)->al3_read_addr_trig =
+                        (uint32_t)&(tx_pkt_ptr[tx_curr_pkt_ptr]);
+                }
+        	}
+        }
+        // Bump command ring buffer address
+        tx_curr_pkt_ptr = tx_next_pkt_ptr;
+    }
 
     return ERR_OK;
 }
@@ -757,32 +770,32 @@ static err_t __not_in_flash_func(netif_rmii_ethernet_output)(struct netif *netif
 // Do end of received packet processing
 // We have at least 960ns (IPG) before next packet
 static void __not_in_flash_func(netif_rmii_ethernet_eof_isr)(){
-  uint32_t prev_rx_addr;
-  uint32_t rx_packet_byte_count;
+    uint32_t prev_rx_addr;
+    uint32_t rx_packet_byte_count;
 
-  // Clear PIO interrupt request 0 bit
-  pio_interrupt_clear(PICO_RMII_ETHERNET_PIO, 0);
+    // Clear PIO interrupt request 0 bit
+    pio_interrupt_clear(PICO_RMII_ETHERNET_PIO, 0);
 
-  // Save old write address (aka start of current packet)
-  prev_rx_addr = rx_addr;
+    // Save old write address (aka start of current packet)
+    prev_rx_addr = rx_addr;
 
-  // Save new write address (aka start of next packet)
-  rx_addr = dma_hw->ch[rx_dma_chan].write_addr - (uint32_t)(&rx_ring[0]);
+    // Save new write address (aka start of next packet)
+    rx_addr = dma_hw->ch[rx_dma_chan].write_addr - (uint32_t)(&rx_ring[0]);
 
-  // Do wrapped length calc
-  if (rx_addr < prev_rx_addr) {
-    rx_packet_byte_count = (RX_BUF_SIZE + rx_addr) - prev_rx_addr;
-  } else {
-    rx_packet_byte_count = rx_addr - prev_rx_addr;
-  }
+    // Do wrapped length calc
+    if (rx_addr < prev_rx_addr) {
+        rx_packet_byte_count = (RX_BUF_SIZE + rx_addr) - prev_rx_addr;
+    } else {
+        rx_packet_byte_count = rx_addr - prev_rx_addr;
+    }
 
-  // Save start/len in packet pointer ring buffer
-  rx_pkt_ptr[rx_curr_pkt_ptr].pkt_addr = prev_rx_addr;
-  rx_pkt_ptr[rx_curr_pkt_ptr].pkt_len = rx_packet_byte_count;
+    // Save start/len in packet pointer ring buffer
+    rx_pkt_ptr[rx_curr_pkt_ptr].pkt_addr = prev_rx_addr;
+    rx_pkt_ptr[rx_curr_pkt_ptr].pkt_len = rx_packet_byte_count;
 
-  // Bump pointer
-  rx_curr_pkt_ptr = (rx_curr_pkt_ptr + 1) & RX_NUM_MASK;
-  
+    // Bump pointer
+    rx_curr_pkt_ptr = (rx_curr_pkt_ptr + 1) & RX_NUM_MASK;
+
 }
 
 static err_t netif_rmii_ethernet_low_init(struct netif *netif) {
@@ -791,7 +804,7 @@ static err_t netif_rmii_ethernet_low_init(struct netif *netif) {
 
     netif->linkoutput = netif_rmii_ethernet_output;
     netif->output     = etharp_output;
-    netif->mtu        = 1500; 
+    netif->mtu        = 1500;
     netif->flags      = NETIF_FLAG_BROADCAST | NETIF_FLAG_ETHARP | NETIF_FLAG_ETHERNET | NETIF_FLAG_IGMP | NETIF_FLAG_MLD6;
 
     // Setup the MAC address
@@ -800,7 +813,7 @@ static err_t netif_rmii_ethernet_low_init(struct netif *netif) {
     } else {
         // generate one for unique board id
         pico_unique_board_id_t board_id;
-    
+
         pico_get_unique_board_id(&board_id);
 
         netif->hwaddr[0] = 0xb8;
@@ -810,11 +823,12 @@ static err_t netif_rmii_ethernet_low_init(struct netif *netif) {
     }
     netif->hwaddr_len = ETH_HWADDR_LEN;
 
-    printf("mac: %02x:%02x:%02x:%02x:%02x:%02x\n",
+    printf(
+        "mac: %02x:%02x:%02x:%02x:%02x:%02x\n",
 	   netif->hwaddr[0], netif->hwaddr[1], netif->hwaddr[2],
 	   netif->hwaddr[3], netif->hwaddr[4], netif->hwaddr[5]
-	   );
-    
+    );
+
     // Init the RMII PIO programs
     rx_sm_offset = pio_add_program(PICO_RMII_ETHERNET_PIO, &rmii_ethernet_phy_rx_data_program);
     tx_sm_offset = pio_add_program(PICO_RMII_ETHERNET_PIO, &rmii_ethernet_phy_tx_data_program);
@@ -861,20 +875,19 @@ static err_t netif_rmii_ethernet_low_init(struct netif *netif) {
     // Chain to the rx reload channel to restart DMA for next packet
     channel_config_set_chain_to(&rx_dma_channel_config, rx_chain_chan);
 
-    dma_channel_configure
-      (
+    dma_channel_configure(
        rx_dma_chan, &rx_dma_channel_config,
        &rx_ring[0],
        // PIO fills upper byte of RX FIFO
        ((uint8_t*)&PICO_RMII_ETHERNET_PIO->rxf[PICO_RMII_ETHERNET_SM_RX]) + 3,
-       1500, // Arbitrary - will be reloaded by reload DMA 
+       1500, // Arbitrary - will be reloaded by reload DMA
        false
-       );
+    );
 
     // Get default config for chain DMA channel
     // Defaults: 32 bit xfer, unpaced, no write inc, read inc, no chain
     rx_chain_channel_config = dma_channel_get_default_config(rx_chain_chan);
-    
+
     // Read from single address, don't increment read address
     channel_config_set_read_increment(&rx_chain_channel_config, false);
 
@@ -882,12 +895,12 @@ static err_t netif_rmii_ethernet_low_init(struct netif *netif) {
     channel_config_set_write_increment(&rx_chain_channel_config, false);
 
     dma_channel_configure(
-			  rx_chain_chan, &rx_chain_channel_config,
-			  &dma_hw->ch[rx_dma_chan].al1_transfer_count_trig,
-			  &rx_packet_size, // Contains default RX receive size
-			  1,
-			  false
-			  );
+        rx_chain_chan, &rx_chain_channel_config,
+        &dma_hw->ch[rx_dma_chan].al1_transfer_count_trig,
+        &rx_packet_size, // Contains default RX receive size
+        1,
+        false
+    );
 
     // Get default config for tx packet data DMA channel
     // Defaults: 32 bit xfer, unpaced, no write inc, read inc, no chain
@@ -903,9 +916,10 @@ static err_t netif_rmii_ethernet_low_init(struct netif *netif) {
     channel_config_set_ring(&tx_dma_channel_config, false, TX_BUF_SIZE_POW);
 
     // Let TX PIO engine request data
-    channel_config_set_dreq(&tx_dma_channel_config,
-			    pio_get_dreq(PICO_RMII_ETHERNET_PIO,
-					 PICO_RMII_ETHERNET_SM_TX, true));
+    channel_config_set_dreq(
+        &tx_dma_channel_config,
+        pio_get_dreq(PICO_RMII_ETHERNET_PIO, PICO_RMII_ETHERNET_SM_TX, true)
+    );
 
     // Eight bit transfers
     channel_config_set_transfer_data_size(&tx_dma_channel_config, DMA_SIZE_8);
@@ -916,9 +930,9 @@ static err_t netif_rmii_ethernet_low_init(struct netif *netif) {
     // Setup the DMA to send the frame via the PIO RMII tansmitter
     dma_channel_configure(
         tx_dma_chan, &tx_dma_channel_config,
-	// PIO leaves data in upper byte of FIFO word
+    	// PIO leaves data in upper byte of FIFO word
         ((uint8_t*)&PICO_RMII_ETHERNET_PIO->txf[PICO_RMII_ETHERNET_SM_TX]) + 3,
-	&tx_ring[0],
+	    &tx_ring[0],
         1518, // Will be over-written by tx chain channel
         false
     );
@@ -950,24 +964,27 @@ static err_t netif_rmii_ethernet_low_init(struct netif *netif) {
     dma_timer_set_fraction(dma_timer, div_frac, div_int);
 
     // Setup timer paced DMA
-    channel_config_set_dreq(&ipg_dma_channel_config,
-			    dma_get_timer_dreq(dma_timer));
+    channel_config_set_dreq(
+        &ipg_dma_channel_config,
+	    dma_get_timer_dreq(dma_timer)
+    );
 
     // Write config, and enable it. Shouldn't ever need to touch again.
     // Set length to 10 Ethernet byte times to allow TX FIFO to drain
     // (8 for FIFO, 1 for PIO xmit, 1 for arbitration uncertainties)
     // We snapshot the TX dma read address for buffer full estimation
-    dma_channel_configure(ipg_dma_chan, &ipg_dma_channel_config,
-			  &ipg_tx_rd_addr, 
-			  (uint32_t *)&(dma_hw->ch[tx_dma_chan].read_addr),
-			  10, 
-			  true
-			  );
+    dma_channel_configure(
+        ipg_dma_chan, &ipg_dma_channel_config,
+        &ipg_tx_rd_addr,
+        (uint32_t *)&(dma_hw->ch[tx_dma_chan].read_addr),
+        10,
+        true
+    );
 
     // Get default config for TX chain DMA channel
     // Defaults: 32 bit xfer, unpaced, no write inc, read inc, no chain
     tx_chain_channel_config = dma_channel_get_default_config(tx_chain_chan);
-    
+
     // Read from ring address, increment read address
     channel_config_set_read_increment(&tx_chain_channel_config, true);
 
@@ -978,46 +995,50 @@ static err_t netif_rmii_ethernet_low_init(struct netif *netif) {
     channel_config_set_write_increment(&tx_chain_channel_config, false);
 
     dma_channel_configure(
-			  tx_chain_chan, &tx_chain_channel_config,
-			  &dma_hw->ch[tx_dma_chan].al1_transfer_count_trig,
-			  &tx_pkt_ptr[0],
-			  1, // Will be over-written by packet output routine
-			  false
-			  );
+        tx_chain_chan, &tx_chain_channel_config,
+        &dma_hw->ch[tx_dma_chan].al1_transfer_count_trig,
+        &tx_pkt_ptr[0],
+        1, // Will be over-written by packet output routine
+        false
+    );
 
-    
+
     // Configure the RMII TX state machine
     float div = (float)clock_get_hz(clk_sys)/100000000.0f;
-    rmii_ethernet_phy_tx_init(PICO_RMII_ETHERNET_PIO,
-			      PICO_RMII_ETHERNET_SM_TX,
-			      tx_sm_offset,
-			      PICO_RMII_ETHERNET_TX_PIN,
-			      PICO_RMII_ETHERNET_RETCLK_PIN,
-			      div);
+    rmii_ethernet_phy_tx_init(
+        PICO_RMII_ETHERNET_PIO,
+        PICO_RMII_ETHERNET_SM_TX,
+        tx_sm_offset,
+        PICO_RMII_ETHERNET_TX_PIN,
+        PICO_RMII_ETHERNET_RETCLK_PIN,
+        div
+    );
 
     // Configure the RMII RX state machine
-    rmii_ethernet_phy_rx_init(PICO_RMII_ETHERNET_PIO,
-			      PICO_RMII_ETHERNET_SM_RX,
-			      rx_sm_offset,
-			      PICO_RMII_ETHERNET_RX_PIN,
-			      div);
+    rmii_ethernet_phy_rx_init(
+        PICO_RMII_ETHERNET_PIO,
+        PICO_RMII_ETHERNET_SM_RX,
+        rx_sm_offset,
+        PICO_RMII_ETHERNET_RX_PIN,
+        div
+    );
 
     // Add handler for PIO SM interrupt
     // We use PIO IRQ 0, which maps to system IRQ 7/9
     if (PICO_RMII_ETHERNET_PIO == pio0) {
-      irq_set_exclusive_handler(PIO0_IRQ_0, netif_rmii_ethernet_eof_isr);
-      pio_set_irq0_source_enabled(pio0, pis_interrupt0, 1);
-      irq_set_enabled(PIO0_IRQ_0, true);
+        irq_set_exclusive_handler(PIO0_IRQ_0, netif_rmii_ethernet_eof_isr);
+        pio_set_irq0_source_enabled(pio0, pis_interrupt0, 1);
+        irq_set_enabled(PIO0_IRQ_0, true);
     } else {
-      irq_set_exclusive_handler(PIO1_IRQ_0, netif_rmii_ethernet_eof_isr);
-      pio_set_irq0_source_enabled(pio1, pis_interrupt0, 1);
-      irq_set_enabled(PIO1_IRQ_0, true);
+        irq_set_exclusive_handler(PIO1_IRQ_0, netif_rmii_ethernet_eof_isr);
+        pio_set_irq0_source_enabled(pio1, pis_interrupt0, 1);
+        irq_set_enabled(PIO1_IRQ_0, true);
     }
 
     // Enable PIO RX FIFO DMA
     dma_channel_start(rx_chain_chan);
 
-    // Setup 50 kHz clock for MDIO clock 
+    // Setup 50 kHz clock for MDIO clock
     gpio_set_function(PICO_RMII_ETHERNET_MDC_PIN, GPIO_FUNC_PWM);
     pwm_config pwm_cnfg = pwm_get_default_config();
     uint32_t pwm_slice_num = pwm_gpio_to_slice_num(PICO_RMII_ETHERNET_MDC_PIN);
@@ -1044,8 +1065,11 @@ static err_t netif_rmii_ethernet_low_init(struct netif *netif) {
     }
 
     // Do a soft-reset
-    netif_rmii_ethernet_mdio_write(phy_address, LAN8720A_BASIC_CONTROL_REG,
-				   0x8000);
+    netif_rmii_ethernet_mdio_write(
+        phy_address,
+        LAN8720A_BASIC_CONTROL_REG,
+		0x8000
+    );
 
     // Wait for it to settle
     sleep_ms(1);
@@ -1062,29 +1086,33 @@ static err_t netif_rmii_ethernet_low_init(struct netif *netif) {
     //           |  \_________ 100BASE-T ability
     //            \___________ 100BASE-T Full-Duplex ability
 
-    //    printf("Auto reg, before write: %08x\n", 
-    //	   netif_rmii_ethernet_mdio_read(phy_address, LAN8720A_AUTO_NEGO_REG)); 
+    //    printf("Auto reg, before write: %08x\n",
+    //	   netif_rmii_ethernet_mdio_read(phy_address, LAN8720A_AUTO_NEGO_REG));
 
 
     //    netif_rmii_ethernet_mdio_write(phy_address, LAN8720A_AUTO_NEGO_REG, 0);
-#if 1
-    netif_rmii_ethernet_mdio_write(phy_address, LAN8720A_AUTO_NEGO_REG, 
+    #if 1
+    netif_rmii_ethernet_mdio_write(
+        phy_address,
+        LAN8720A_AUTO_NEGO_REG,
         LAN8720A_AUTO_NEGO_REG_IEEE802_3
         // TODO: the PIO RX and TX are hardcoded to 100Mbps, make it configurable to uncomment this
         // | LAN8720A_AUTO_NEGO_REG_10_ABI | LAN8720A_AUTO_NEGO_REG_10_FD_ABI
         | LAN8720A_AUTO_NEGO_REG_100_ABI | LAN8720A_AUTO_NEGO_REG_100_FD_ABI
     );
-#endif
+    #endif
     // Enable auto-negotiate
     netif_rmii_ethernet_mdio_write(phy_address, LAN8720A_BASIC_CONTROL_REG, 0x1000);
 
-#if 0
-    printf("Auto reg: %08x\n", 
-	   netif_rmii_ethernet_mdio_read(phy_address, LAN8720A_AUTO_NEGO_REG)); 
+    #if 0
+    printf(
+        "Auto reg: %08x\n",
+        netif_rmii_ethernet_mdio_read(phy_address, LAN8720A_AUTO_NEGO_REG));
 
-    printf("Ctl reg: %08x\n", 
-	   netif_rmii_ethernet_mdio_read(phy_address, LAN8720A_BASIC_CONTROL_REG));
-#endif
+    printf(
+        "Ctl reg: %08x\n",
+        netif_rmii_ethernet_mdio_read(phy_address, LAN8720A_BASIC_CONTROL_REG));
+    #endif
 
     return ERR_OK;
 }
@@ -1117,50 +1145,52 @@ void __not_in_flash_func(netif_rmii_ethernet_poll)() {
     // Use non-blocking MDIO read to get link status
     uint32_t deferred_read = netif_rmii_ethernet_mdio_read_nb(phy_address, 1);
     if (deferred_read != -1) {
-      uint16_t link_status = (deferred_read & 0x04) >> 2;
-      if (netif_is_link_up(rmii_eth_netif) ^ link_status) {
-	if (link_status) {
-	  // printf("netif_set_link_up\n");
-	  netif_set_link_up(rmii_eth_netif);
-	} else {
-	  // printf("netif_set_link_down\n");
-	  netif_set_link_down(rmii_eth_netif);
-	}
-      }
+        uint16_t link_status = (deferred_read & 0x04) >> 2;
+        if (netif_is_link_up(rmii_eth_netif) ^ link_status) {
+            if (link_status) {
+                // printf("netif_set_link_up\n");
+                netif_set_link_up(rmii_eth_netif);
+            } else {
+                // printf("netif_set_link_down\n");
+                netif_set_link_down(rmii_eth_netif);
+            }
+        }
     }
 
     // Get number of packets received since last poll
     // Read curr pkt ptr once, to avoid ISR updating while we're using it
     uint32_t safe_rx_curr_pkt_ptr = rx_curr_pkt_ptr;
-    
+
     if (safe_rx_curr_pkt_ptr < rx_prev_pkt_ptr) {
-      rx_packet_count = (RX_NUM_PTR + safe_rx_curr_pkt_ptr) - rx_prev_pkt_ptr;
+        rx_packet_count = (RX_NUM_PTR + safe_rx_curr_pkt_ptr) - rx_prev_pkt_ptr;
     } else {
-      rx_packet_count = safe_rx_curr_pkt_ptr - rx_prev_pkt_ptr;
+        rx_packet_count = safe_rx_curr_pkt_ptr - rx_prev_pkt_ptr;
     }
 
     // Process all the packets outstanding
     while (rx_packet_count > 0) {
-      // Get current packet parameters
-      rx_packet_byte_count = rx_pkt_ptr[rx_prev_pkt_ptr].pkt_len;
-      rx_packet_addr = rx_pkt_ptr[rx_prev_pkt_ptr].pkt_addr;
+        // Get current packet parameters
+        rx_packet_byte_count = rx_pkt_ptr[rx_prev_pkt_ptr].pkt_len;
+        rx_packet_addr = rx_pkt_ptr[rx_prev_pkt_ptr].pkt_addr;
 
-      // Bump pkt ptr/count
-      rx_prev_pkt_ptr = (rx_prev_pkt_ptr + 1) & RX_NUM_MASK;
-      rx_packet_count--;
-      
-      if (rx_packet_byte_count > 63) {
-	struct pbuf* p = pbuf_alloc(PBUF_RAW, rx_packet_byte_count, PBUF_POOL);
-	// Push packet from ring buffer into LWIP pbuf
-	rx_crc_count = ethernet_frame_length_pbuf(rx_ring,
-						  p,
-						  rx_packet_byte_count,
-						  rx_packet_addr);
+        // Bump pkt ptr/count
+        rx_prev_pkt_ptr = (rx_prev_pkt_ptr + 1) & RX_NUM_MASK;
+        rx_packet_count--;
 
-	if (rmii_eth_netif->input(p, rmii_eth_netif) != ERR_OK) {
-	  pbuf_free(p);
-	}
-      }
+        if (rx_packet_byte_count > 63) {
+        	struct pbuf* p = pbuf_alloc(PBUF_RAW, rx_packet_byte_count, PBUF_POOL);
+            // Push packet from ring buffer into LWIP pbuf
+            rx_crc_count = ethernet_frame_length_pbuf(
+                rx_ring,
+                p,
+                rx_packet_byte_count,
+                rx_packet_addr
+            );
+
+            if (rmii_eth_netif->input(p, rmii_eth_netif) != ERR_OK) {
+                pbuf_free(p);
+	        }
+        }
     }
 
     sys_check_timeouts();
@@ -1168,6 +1198,6 @@ void __not_in_flash_func(netif_rmii_ethernet_poll)() {
 
 void __not_in_flash_func(netif_rmii_ethernet_loop)() {
     while (1) {
-      netif_rmii_ethernet_poll();
+        netif_rmii_ethernet_poll();
     }
 }
