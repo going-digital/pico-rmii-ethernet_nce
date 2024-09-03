@@ -135,7 +135,7 @@ int phy_address;
 
 static const uint32_t ethernet_polynomial_le = 0xedb88320U;
 
-#ifndef USE_CPU_CRC
+#if !defined(USE_CPU_CRC) && !defined(USE_DMA_CRC)
 static uint32_t crc32Lookup[256] = {
     0x00000000,0x77073096,0xEE0E612C,0x990951BA,0x076DC419,0x706AF48F,0xE963A535,0x9E6495A3,
     0x0EDB8832,0x79DCB8A4,0xE0D5E91E,0x97D2D988,0x09B64C2B,0x7EB17CBD,0xE7B82D07,0x90BF1D91,
@@ -179,7 +179,36 @@ static uint __not_in_flash_func(ethernet_frame_length_pbuf)(
     struct pbuf *buf,
     int len, int addr
 ) {
+    #ifdef USE_DMA_CRC
+    uint crc = 0xffffffff;  /* Initial value. */
+    struct pbuf *p;
+    int chan = dma_claim_unused_channel(true);
+    dma_channel_config c = dma_channel_get_default_config(chan);
+    channel_config_set_transfer_data_size(&c, DMA_SIZE_8);
+    channel_config_set_read_increment(&c, true);
+    channel_config_set_write_increment(&c, true);
+    channel_config_set_ring(&c, true, TX_BUF_SIZE_POW);
+    channel_config_set_sniff_enable(&c, true);
+    dma_sniffer_set_data_accumulator(crc);
+    dma_sniffer_set_output_reverse_enabled(true);
+    dma_sniffer_enable(chan, DMA_SNIFF_CTRL_CALC_VALUE_CRC32R, true);
+    for (p = buf; total_copy_len != 0; p = p->next) {
+        dma_channel_configure(
+            chan, &c, (uint8_t *)p->payload, data + addr, p->len, true
+        );
+        addr = (addr + p->len) & RX_BUF_MASK;
+        dma_channel_wait_for_finish_blocking(chan);
+    }
+    crc = dma_sniffer_get_data_accumulator();
+    dma_channel_configure(
+        chan, &c, wr_ptr,
+    )
 
+    for (p = buf; total_copy_len != 0; p = p -> next) {
+
+    }
+
+    #else /* USE_DMA_CRC */
     uint crc = 0xffffffff;  /* Initial value. */
     uint index = 0;
     uint inverted_crc;
@@ -208,6 +237,24 @@ static uint __not_in_flash_func(ethernet_frame_length_pbuf)(
         }
 
         // Calculate CRC over payload
+        #ifdef USE_DMA_CRC
+        int chan = dma_claim_unused_channel(true);
+        dma_channel_config c = dma_channel_get_default_config(chan);
+        channel_config_set_transfer_data_size(&c, DMA_SIZE_8);
+        channel_config_set_read_increment(&c, true);
+        channel_config_set_write_increment(&c, true);
+        channel_config_set_ring(&c, false, RX_BUF_SIZE_POW);
+        channel_config_set_sniff_enable(&c, true);
+        dma_sniffer_set_data_accumulator(crc);
+        dma_sniffer_set_output_reverse_enabled(true);
+        dma_sniffer_enable(chan, DMA_SNIFF_CTRL_CALC_VALUE_CRC32R, true);
+        dma_channel_configure(
+            chan, &c, wr_ptr, data + addr, total_copy_len, true
+        );
+        dma_channel_wait_for_finish_blocking(chan);
+        crc = dma_sniffer_get_data_accumulator();
+        addr = (addr + total_copy_len) & RX_BUF_MASK;
+        #else
         for (i = 0; i < buf_copy_len; i++) {
             // Get data from ring buffer
             curr_data = data[addr];
@@ -237,16 +284,29 @@ static uint __not_in_flash_func(ethernet_frame_length_pbuf)(
             }
             total_copy_len--;
         }
+        #endif
     }
 
+    #ifdef USE_DMA_CRC
+    if (crc) {
+        /* CRC is invalid */
+        return 0;
+    } else {
+        /* CRC is correct */
+        /* This is because CRCing the packet including the CRC should result in 0 */
+        return len;
+    }
+    #else
     inverted_crc = ~crc;
 
     // Bad packet, return 0 for error
     if (pkt_crc != inverted_crc) {
         len = 0;
     }
-
     return len;
+    #endif
+    #endif
+
 }
 
 // Copy packet data to ring buffer, adding pkt len, and CRC, for transmission
@@ -256,6 +316,34 @@ static uint __not_in_flash_func(ethernet_frame_copy_ring_pbuf)(
     struct pbuf *p,
     int addr
 ) {
+    #ifdef USE_DMA_CRC
+    /* Use DMA to copy across the memory, with the sniffer calculating CRC */
+    /* as it goes. */
+    uint crc = 0xffffffff;  /* Initial value. */
+    uint inverted_crc;
+    uint32_t tot_len = 0;
+    int j;
+
+    dma_sniffer_set_data_accumulator(crc);
+    int chan = dma_claim_unused_channel(true);
+    dma_channel_config c = dma_channel_get_default_config(chan);
+    channel_config_set_transfer_data_size(&c, DMA_SIZE_8);
+    channel_config_set_read_increment(&c, true);
+    channel_config_set_write_increment(&c, true);
+    channel_config_set_ring(&c, true, TX_BUF_SIZE_POW);
+    channel_config_set_sniff_enable(&c, true);
+    dma_sniffer_set_output_reverse_enabled(true);
+    dma_sniffer_enable(chan, DMA_SNIFF_CTRL_CALC_VALUE_CRC32R, true);
+    for (struct pbuf *q = p; q != NULL; q = q->next) {
+        dma_channel_configure(
+            chan, &c, data + addr, q->payload, q->len, true
+        );
+        addr = (addr + q->len) & TX_BUF_MASK;
+        dma_channel_wait_for_finish_blocking(chan);
+    }
+    crc = dma_sniffer_get_data_accumulator();
+
+    #else /* USE_DMA_CRC */
 
     uint crc = 0xffffffff;  /* Initial value. */
     uint inverted_crc;
@@ -352,6 +440,7 @@ static uint __not_in_flash_func(ethernet_frame_copy_ring_pbuf)(
     tot_len += 4;
 
     return tot_len;
+    #endif /* USE_DMA_CRC */
 }
 
 
